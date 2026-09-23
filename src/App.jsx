@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 function App() {
   const [history, setHistory] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [selectedApartment, setSelectedApartment] = useState(1);
   const [selectedDate, setSelectedDate] = useState(
     getTodayDate()
@@ -52,12 +53,24 @@ function App() {
     setIsSaving(true);
     setErrorMessage("");
 
-    const { error } = await supabase
-      .from("mowing_entries")
-      .insert({
-        apartment: Number(selectedApartment),
-        mowing_date: selectedDate,
-      });
+    let error;
+
+if (editingId) {
+  ({ error } = await supabase
+    .from("mowing_entries")
+    .update({
+      apartment: Number(selectedApartment),
+      mowing_date: selectedDate,
+    })
+    .eq("id", editingId));
+} else {
+  ({ error } = await supabase
+    .from("mowing_entries")
+    .insert({
+      apartment: Number(selectedApartment),
+      mowing_date: selectedDate,
+    }));
+}
 
     if (error) {
       console.error(error);
@@ -67,6 +80,7 @@ function App() {
     }
 
     setShowForm(false);
+    setEditingId(null);
     setSelectedApartment(1);
     setSelectedDate(getTodayDate());
     setIsSaving(false);
@@ -99,7 +113,12 @@ function App() {
 
     return `${daysAgo} päeva tagasi`;
   }
-
+function handleEdit(entry) {
+  setEditingId(entry.id);
+  setSelectedApartment(entry.apartment);
+  setSelectedDate(entry.mowing_date);
+  setShowForm(true);
+}
   function formatDate(date) {
     return new Intl.DateTimeFormat("et-EE").format(
       new Date(`${date}T00:00:00`)
@@ -406,21 +425,38 @@ function App() {
           ) : (
             history.map((entry, index) => (
               <div
-                key={entry.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "15px 18px",
-                  borderBottom:
-                    index < history.length - 1
-                      ? "1px solid #edf0eb"
-                      : "none",
-                }}
-              >
-                <span>{formatDate(entry.mowing_date)}</span>
+  key={entry.id}
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "15px 18px",
+    borderBottom:
+      index < history.length - 1
+        ? "1px solid #edf0eb"
+        : "none",
+  }}
+>
+  <div>
+    <span>{formatDate(entry.mowing_date)}</span>
+  </div>
 
-                <strong>Korter {entry.apartment}</strong>
-              </div>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    }}
+  >
+    <strong>Korter {entry.apartment}</strong>
+
+    <button
+  type="button"
+  onClick={() => handleEdit(entry)}
+>
+  Muuda
+</button>
+  </div>
+</div>
             ))
           )}
         </section>
