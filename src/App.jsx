@@ -94,7 +94,7 @@ if (editingId) {
 
     today.setHours(0, 0, 0, 0);
 
-    return Math.floor(
+    return Math.round(
       (today.getTime() - mowingDate.getTime()) /
         (1000 * 60 * 60 * 24)
     );
@@ -118,6 +118,18 @@ function handleEdit(entry) {
   setSelectedApartment(entry.apartment);
   setSelectedDate(entry.mowing_date);
   setShowForm(true);
+
+  setTimeout(() => {
+    document.getElementById("mowing-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+}
+
+function handleCancel() {
+  setShowForm(false);
+  setEditingId(null);
 }
   function formatDate(date) {
     return new Intl.DateTimeFormat("et-EE").format(
@@ -285,7 +297,9 @@ function handleEdit(entry) {
               boxShadow: "0 6px 20px rgba(0, 0, 0, 0.08)",
             }}
           >
-            <h2 style={{ marginTop: 0 }}>Lisa niitmine</h2>
+            <h2 style={{ marginTop: 0 }}>
+  {editingId !== null ? "Muuda niitmist" : "Lisa niitmine"}
+</h2>
 
             <label
               htmlFor="apartment"
@@ -353,6 +367,7 @@ function handleEdit(entry) {
             />
 
             <div
+              id="mowing-form"
               style={{
                 display: "flex",
                 gap: "10px",
@@ -361,7 +376,7 @@ function handleEdit(entry) {
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => setShowForm(false)}
+                onClick={handleCancel}
                 style={{
                   flex: 1,
                   padding: "12px",
@@ -452,6 +467,16 @@ function handleEdit(entry) {
     <button
   type="button"
   onClick={() => handleEdit(entry)}
+  style={{
+    backgroundColor: "#e8f3e8",
+    color: "#2f6b3b",
+    border: "1px solid #c5dfc7",
+    borderRadius: "8px",
+    padding: "7px 12px",
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+  }}
 >
   Muuda
 </button>
