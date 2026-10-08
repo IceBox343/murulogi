@@ -78,7 +78,9 @@ if (editingId) {
       setIsSaving(false);
       return;
     }
-
+    if (!editingId) {
+  rememberApartment(selectedApartment);
+}
     setShowForm(false);
     setEditingId(null);
     setSelectedApartment(1);
@@ -126,7 +128,9 @@ function handleEdit(entry) {
     });
   }, 100);
 }
-
+function rememberApartment(apartment) {
+  localStorage.setItem("murulogi-apartment", String(apartment));
+}
 function handleCancel() {
   setShowForm(false);
   setEditingId(null);
@@ -240,7 +244,16 @@ function handleCancel() {
                 type="button"
                 onClick={() => {
   setEditingId(null);
-  setSelectedDate(new Date().toLocaleDateString("en-CA"));
+
+  const savedApartment = localStorage.getItem("murulogi-apartment");
+
+  if (savedApartment && Number(savedApartment) >= 1 && Number(savedApartment) <= 6) {
+    setSelectedApartment(Number(savedApartment));
+  } else {
+    setSelectedApartment(1);
+  }
+
+  setSelectedDate(getTodayDate());
   setShowForm(true);
 }}
                 style={{
