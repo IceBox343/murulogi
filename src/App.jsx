@@ -130,6 +130,7 @@ function handleEdit(entry) {
 function handleCancel() {
   setShowForm(false);
   setEditingId(null);
+  setSelectedDate(new Date().toLocaleDateString("en-CA"));
 }
   function formatDate(date) {
     return new Intl.DateTimeFormat("et-EE").format(
@@ -237,7 +238,11 @@ function handleCancel() {
 
               <button
                 type="button"
-                onClick={() => setShowForm(true)}
+                onClick={() => {
+  setEditingId(null);
+  setSelectedDate(new Date().toLocaleDateString("en-CA"));
+  setShowForm(true);
+}}
                 style={{
                   width: "100%",
                   marginTop: "22px",
