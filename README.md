@@ -1,16 +1,56 @@
-# React + Vite
+# 🌱 Murulogi
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small web app for tracking lawn mowing around our apartment building (6 apartments).
+It shows when the lawn was last mowed and by which apartment, keeps a history, and lets
+you add or edit entries. The interface is in Estonian.
 
-Currently, two official plugins are available:
+## Tech
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + Vite
+- Supabase (Postgres) for storage
+- Hosted on Vercel, deployed automatically from GitHub
 
-## React Compiler
+## Run locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Create a `.env.local` file in the project root (it is git-ignored):
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+## Database
+
+Table `mowing_entries`:
+
+| column        | type        | notes                  |
+| ------------- | ----------- | ---------------------- |
+| `id`          | primary key |                        |
+| `apartment`   | integer     | 1-6                    |
+| `mowing_date` | date        |                        |
+| `created_at`  | timestamptz | defaults to `now()`    |
+
+## Project structure
+
+```
+src/
+  App.jsx               data loading/saving and page layout
+  components/           MowingCard, MowingForm, HistoryList
+  lib/dates.js          date helpers and formatting
+  lib/apartment.js      remembers the apartment chosen on this device
+  supabaseClient.js     Supabase client
+  index.css             all styles
+```
+
+## Deploy
+
+```bash
+git add .
+git commit -m "Describe change"
+git push
+```

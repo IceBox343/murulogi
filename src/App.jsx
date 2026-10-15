@@ -1,508 +1,181 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { getRememberedApartment, rememberApartment } from "./lib/apartment";
+import { getTodayDate } from "./lib/dates";
+import MowingCard from "./components/MowingCard";
+import MowingForm from "./components/MowingForm";
+import HistoryList from "./components/HistoryList";
 
+async function fetchHistory() {
+  const { data, error } = await supabase
+    .from("mowing_entries")
+    .select("id, apartment, mowing_date, created_at")
+    .order("mowing_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
 
 function App() {
   const [history, setHistory] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [selectedApartment, setSelectedApartment] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(
-    getTodayDate()
-  );
+  const [selectedApartment, setSelectedApartment] = useState(getRememberedApartment);
+  const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
+  // Loads the history on start and again whenever reloadKey changes.
   useEffect(() => {
-    loadHistory();
-  }, []);
+    let ignore = false;
 
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
+    fetchHistory()
+      .then((data) => {
+        if (ignore) return;
+        setHistory(data);
+        setLoadFailed(false);
+        setErrorMessage("");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        // Keep whatever we already had on screen instead of wiping the list.
+        console.error(error);
+        setLoadFailed(true);
+        setErrorMessage("Niitmisandmete laadimine ebaõnnestus.");
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
 
-    return `${year}-${month}-${day}`;
+    return () => {
+      ignore = true;
+    };
+  }, [reloadKey]);
+
+  function reloadHistory() {
+    setReloadKey((key) => key + 1);
   }
 
-  async function loadHistory() {
+  function retryLoad() {
     setIsLoading(true);
-    setErrorMessage("");
-
-    const { data, error } = await supabase
-      .from("mowing_entries")
-      .select("id, apartment, mowing_date, created_at")
-      .order("mowing_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      setErrorMessage("Niitmisandmete laadimine ebaõnnestus.");
-      setHistory([]);
-    } else {
-      setHistory(data ?? []);
-    }
-
-    setIsLoading(false);
+    reloadHistory();
   }
 
-  async function addMowing(event) {
+  function resetForm() {
+    setEditingId(null);
+    setSelectedApartment(getRememberedApartment());
+    setSelectedDate(getTodayDate());
+  }
+
+  function openNewForm() {
+    resetForm();
+    setShowForm(true);
+  }
+
+  function handleEdit(entry) {
+    setEditingId(entry.id);
+    setSelectedApartment(entry.apartment);
+    setSelectedDate(entry.mowing_date);
+    setShowForm(true);
+  }
+
+  function handleCancel() {
+    resetForm();
+    setShowForm(false);
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setIsSaving(true);
     setErrorMessage("");
 
-    let error;
-
-if (editingId) {
-  ({ error } = await supabase
-    .from("mowing_entries")
-    .update({
+    const isEditing = editingId !== null;
+    const entry = {
       apartment: Number(selectedApartment),
       mowing_date: selectedDate,
-    })
-    .eq("id", editingId));
-} else {
-  ({ error } = await supabase
-    .from("mowing_entries")
-    .insert({
-      apartment: Number(selectedApartment),
-      mowing_date: selectedDate,
-    }));
-}
+    };
+    let saved = false;
 
-    if (error) {
+    try {
+      const table = supabase.from("mowing_entries");
+      const { error } = isEditing
+        ? await table.update(entry).eq("id", editingId)
+        : await table.insert(entry);
+
+      if (error) {
+        throw error;
+      }
+
+      // Only remember the apartment for new entries: when editing, you might be
+      // correcting somebody else's entry.
+      if (!isEditing) {
+        rememberApartment(entry.apartment);
+      }
+
+      saved = true;
+    } catch (error) {
       console.error(error);
       setErrorMessage("Niitmise salvestamine ebaõnnestus.");
+    } finally {
       setIsSaving(false);
-      return;
-    }
-    if (!editingId) {
-  rememberApartment(selectedApartment);
-}
-    setShowForm(false);
-    setEditingId(null);
-    setSelectedApartment(1);
-    setSelectedDate(getTodayDate());
-    setIsSaving(false);
-
-    await loadHistory();
-  }
-
-  function calculateDaysAgo(date) {
-    const mowingDate = new Date(`${date}T00:00:00`);
-    const today = new Date();
-
-    today.setHours(0, 0, 0, 0);
-
-    return Math.round(
-      (today.getTime() - mowingDate.getTime()) /
-        (1000 * 60 * 60 * 24)
-    );
-  }
-
-  function formatDaysAgo(date) {
-    const daysAgo = calculateDaysAgo(date);
-
-    if (daysAgo === 0) {
-      return "Täna";
     }
 
-    if (daysAgo === 1) {
-      return "1 päev tagasi";
+    if (saved) {
+      resetForm();
+      setShowForm(false);
+      reloadHistory();
     }
-
-    return `${daysAgo} päeva tagasi`;
-  }
-function handleEdit(entry) {
-  setEditingId(entry.id);
-  setSelectedApartment(entry.apartment);
-  setSelectedDate(entry.mowing_date);
-  setShowForm(true);
-
-  setTimeout(() => {
-    document.getElementById("mowing-form")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 100);
-}
-function rememberApartment(apartment) {
-  localStorage.setItem("murulogi-apartment", String(apartment));
-}
-function handleCancel() {
-  setShowForm(false);
-  setEditingId(null);
-  setSelectedDate(new Date().toLocaleDateString("en-CA"));
-}
-  function formatDate(date) {
-    return new Intl.DateTimeFormat("et-EE").format(
-      new Date(`${date}T00:00:00`)
-    );
   }
 
-  const latestMowing = history[0];
+  const showRetry = loadFailed && history.length === 0;
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f4f7f2",
-        padding: "24px 16px",
-        boxSizing: "border-box",
-        fontFamily: "Arial, sans-serif",
-        color: "#1f2933",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "420px",
-          margin: "0 auto",
-        }}
-      >
-        <h1
-          style={{
-            margin: "8px 0 32px",
-            textAlign: "center",
-            fontSize: "32px",
-          }}
-        >
-          🌱 Murulogi
-        </h1>
+    <main className="app">
+      <div className="app-inner">
+        <h1 className="app-title">🌱 Murulogi</h1>
 
         {errorMessage && (
-          <div
-            style={{
-              padding: "12px",
-              marginBottom: "18px",
-              border: "1px solid #ef9a9a",
-              borderRadius: "10px",
-              backgroundColor: "#ffebee",
-              color: "#b71c1c",
-            }}
-          >
+          <div className="error-banner" role="alert">
             {errorMessage}
           </div>
         )}
 
         {isLoading ? (
-          <div
-            style={{
-              padding: "24px",
-              textAlign: "center",
-            }}
-          >
-            Laadin...
-          </div>
-        ) : latestMowing ? (
-          <>
-            <h2
-              style={{
-                fontSize: "18px",
-                marginBottom: "10px",
-              }}
-            >
-              Viimane niitmine
-            </h2>
-
-            <section
-              style={{
-                padding: "24px",
-                marginBottom: "28px",
-                borderRadius: "18px",
-                backgroundColor: "white",
-                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.08)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "22px",
-                  fontWeight: "700",
-                  marginBottom: "10px",
-                }}
-              >
-                Korter {latestMowing.apartment}
-              </div>
-
-              <div
-                style={{
-                  fontSize: "34px",
-                  fontWeight: "800",
-                  color: "#2e7d32",
-                  marginBottom: "6px",
-                }}
-              >
-                {formatDaysAgo(latestMowing.mowing_date)}
-              </div>
-
-              <div style={{ color: "#667085" }}>
-                {formatDate(latestMowing.mowing_date)}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-  setEditingId(null);
-
-  const savedApartment = localStorage.getItem("murulogi-apartment");
-
-  if (savedApartment && Number(savedApartment) >= 1 && Number(savedApartment) <= 6) {
-    setSelectedApartment(Number(savedApartment));
-  } else {
-    setSelectedApartment(1);
-  }
-
-  setSelectedDate(getTodayDate());
-  setShowForm(true);
-}}
-                style={{
-                  width: "100%",
-                  marginTop: "22px",
-                  padding: "13px 16px",
-                  border: "none",
-                  borderRadius: "10px",
-                  backgroundColor: "#2e7d32",
-                  color: "white",
-                  fontSize: "16px",
-                  fontWeight: "700",
-                  cursor: "pointer",
-                }}
-              >
-                Lisa niitmine
-              </button>
-            </section>
-          </>
-        ) : (
-          <section
-            style={{
-              padding: "24px",
-              marginBottom: "28px",
-              textAlign: "center",
-              borderRadius: "18px",
-              backgroundColor: "white",
-            }}
-          >
-            <p>Niitmisi pole veel lisatud.</p>
-
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              style={{
-                padding: "13px 18px",
-                border: "none",
-                borderRadius: "10px",
-                backgroundColor: "#2e7d32",
-                color: "white",
-                fontSize: "16px",
-                fontWeight: "700",
-                cursor: "pointer",
-              }}
-            >
-              Lisa esimene niitmine
+          <div className="loading">Laadin...</div>
+        ) : showRetry ? (
+          <section className="card card--empty">
+            <button type="button" className="btn-primary" onClick={retryLoad}>
+              Proovi uuesti
             </button>
           </section>
+        ) : (
+          <>
+            <MowingCard latestMowing={history[0]} onAdd={openNewForm} />
+
+            {showForm && (
+              <MowingForm
+                key={editingId ?? "new"}
+                isEditing={editingId !== null}
+                apartment={selectedApartment}
+                date={selectedDate}
+                isSaving={isSaving}
+                onApartmentChange={setSelectedApartment}
+                onDateChange={setSelectedDate}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+              />
+            )}
+
+            <HistoryList history={history} onEdit={handleEdit} />
+          </>
         )}
-
-        {showForm && (
-          <form
-            onSubmit={addMowing}
-            style={{
-              padding: "22px",
-              marginBottom: "28px",
-              borderRadius: "18px",
-              backgroundColor: "white",
-              boxShadow: "0 6px 20px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>
-  {editingId !== null ? "Muuda niitmist" : "Lisa niitmine"}
-</h2>
-
-            <label
-              htmlFor="apartment"
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "700",
-              }}
-            >
-              Korter
-            </label>
-
-            <select
-              id="apartment"
-              value={selectedApartment}
-              onChange={(event) =>
-                setSelectedApartment(event.target.value)
-              }
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "11px",
-                marginBottom: "18px",
-                border: "1px solid #cfd8cc",
-                borderRadius: "8px",
-                fontSize: "16px",
-              }}
-            >
-              {[1, 2, 3, 4, 5, 6].map((apartment) => (
-                <option key={apartment} value={apartment}>
-                  Korter {apartment}
-                </option>
-              ))}
-            </select>
-
-            <label
-              htmlFor="mowing-date"
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "700",
-              }}
-            >
-              Kuupäev
-            </label>
-
-            <input
-              id="mowing-date"
-              type="date"
-              value={selectedDate}
-              max={getTodayDate()}
-              onChange={(event) =>
-                setSelectedDate(event.target.value)
-              }
-              required
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "11px",
-                marginBottom: "20px",
-                border: "1px solid #cfd8cc",
-                borderRadius: "8px",
-                fontSize: "16px",
-              }}
-            />
-
-            <div
-              id="mowing-form"
-              style={{
-                display: "flex",
-                gap: "10px",
-              }}
-            >
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={handleCancel}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  border: "1px solid #b8c2b5",
-                  borderRadius: "9px",
-                  backgroundColor: "white",
-                  cursor: "pointer",
-                }}
-              >
-                Tühista
-              </button>
-
-              <button
-                type="submit"
-                disabled={isSaving}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  border: "none",
-                  borderRadius: "9px",
-                  backgroundColor: "#2e7d32",
-                  color: "white",
-                  fontWeight: "700",
-                  cursor: isSaving ? "not-allowed" : "pointer",
-                  opacity: isSaving ? 0.7 : 1,
-                }}
-              >
-                {isSaving ? "Salvestan..." : "Salvesta"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <h2
-          style={{
-            fontSize: "18px",
-            marginBottom: "10px",
-          }}
-        >
-          Ajalugu
-        </h2>
-
-        <section
-          style={{
-            overflow: "hidden",
-            borderRadius: "18px",
-            backgroundColor: "white",
-            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.06)",
-          }}
-        >
-          {history.length === 0 ? (
-            <p
-              style={{
-                padding: "20px",
-                textAlign: "center",
-                color: "#667085",
-              }}
-            >
-              Ajalugu on tühi.
-            </p>
-          ) : (
-            history.map((entry, index) => (
-              <div
-  key={entry.id}
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "15px 18px",
-    borderBottom:
-      index < history.length - 1
-        ? "1px solid #edf0eb"
-        : "none",
-  }}
->
-  <div>
-    <span>{formatDate(entry.mowing_date)}</span>
-  </div>
-
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "10px",
-    }}
-  >
-    <strong>Korter {entry.apartment}</strong>
-
-    <button
-  type="button"
-  onClick={() => handleEdit(entry)}
-  style={{
-    backgroundColor: "#e8f3e8",
-    color: "#2f6b3b",
-    border: "1px solid #c5dfc7",
-    borderRadius: "8px",
-    padding: "7px 12px",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-  }}
->
-  Muuda
-</button>
-  </div>
-</div>
-            ))
-          )}
-        </section>
       </div>
     </main>
   );

@@ -1,4 +1,218 @@
+:root {
+  --green: #2e7d32;
+  --text: #1f2933;
+  --muted: #667085;
+  --background: #f4f7f2;
+  --border: #cfd8cc;
+}
+
 body {
   margin: 0;
   font-family: Arial, sans-serif;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* Layout */
+
+.app {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 16px;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+.app-inner {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.app-title {
+  margin: 8px 0 32px;
+  text-align: center;
+  font-size: 32px;
+}
+
+.section-title {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.loading {
+  padding: 24px;
+  text-align: center;
+}
+
+.error-banner {
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid #ef9a9a;
+  border-radius: 10px;
+  background-color: #ffebee;
+  color: #b71c1c;
+}
+
+/* Latest mowing card */
+
+.card {
+  margin-bottom: 28px;
+  padding: 24px;
+  border-radius: 18px;
+  background-color: white;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card--empty {
+  text-align: center;
+  box-shadow: none;
+}
+
+.card-apartment {
+  margin-bottom: 10px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.card-days {
+  margin-bottom: 6px;
+  color: var(--green);
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.card-date {
+  color: var(--muted);
+}
+
+/* Buttons */
+
+.btn-primary {
+  padding: 13px 18px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--green);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-block {
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px 16px;
+}
+
+/* Form */
+
+.form {
+  margin-bottom: 28px;
+  padding: 22px;
+  scroll-margin-top: 16px;
+  border-radius: 18px;
+  background-color: white;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.form h2 {
+  margin-top: 0;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 18px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.form-input--last {
+  margin-bottom: 20px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-cancel,
+.btn-save {
+  flex: 1;
+  padding: 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.btn-cancel {
+  border: 1px solid #b8c2b5;
+  background-color: white;
+}
+
+.btn-save {
+  border: none;
+  background-color: var(--green);
+  color: white;
+  font-weight: 700;
+}
+
+.btn-save:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* History */
+
+.history {
+  overflow: hidden;
+  border-radius: 18px;
+  background-color: white;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.history-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-bottom: 1px solid #edf0eb;
+}
+
+.history-row:last-child {
+  border-bottom: none;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-edit {
+  padding: 7px 12px;
+  border: 1px solid #c5dfc7;
+  border-radius: 8px;
+  background-color: #e8f3e8;
+  color: #2f6b3b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
