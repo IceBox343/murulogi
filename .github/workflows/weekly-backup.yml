@@ -25,7 +25,7 @@ jobs:
           echo "Lines in backup (including header): $(wc -l < "$FILE")"
 
       - name: Save the backup
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backup-${{ env.FILE }}
           path: ${{ env.FILE }}
