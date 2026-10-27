@@ -1,0 +1,32 @@
+name: Weekly backup
+
+on:
+  schedule:
+    - cron: "43 5 * * 0"   # every Sunday at 05:43 UTC
+  workflow_dispatch:        # lets you run it manually from the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download mowing_entries as CSV
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          FILE="mowing_entries_$(date +%F).csv"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          curl --fail --silent --show-error \
+            "$SUPABASE_URL/rest/v1/mowing_entries?select=id,apartment,mowing_date,created_at&order=mowing_date.desc,created_at.desc" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Accept: text/csv" \
+            -o "$FILE"
+          test -s "$FILE"
+          echo "Lines in backup (including header): $(wc -l < "$FILE")"
+
+      - name: Save the backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 90
